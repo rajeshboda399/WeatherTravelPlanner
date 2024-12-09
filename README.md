@@ -30,5 +30,6 @@ Hosting: (Specify if hosted, e.g., GitHub Pages, Netlify, etc.)
 
 **API Reference**
 
-Endpoint: https://api.openweathermap.org/data/2.5/weather
-https://api.opencagedata.com/geocode/v1/json
+1. Endpoint: https://api.openweathermap.org/data/2.5/weather
+
+2. https://api.opencagedata.com/geocode/v1/json
