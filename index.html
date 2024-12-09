@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Travel Planner</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        #weatherForm {
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+        }
+        input, select, button {
+            margin: 5px 0;
+            padding: 5px;
+            width: 200px;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+        }
+        #destinationList {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div id="weatherForm">
+        <h1>Weather Travel Planner</h1>
+        <label for="minTemp">Minimum Temperature (°C): </label>
+        <input type="number" id="minTemp" value="20"><br>
+        <label for="maxTemp">Maximum Temperature (°C): </label>
+        <input type="number" id="maxTemp" value="30"><br>
+        <label for="weatherCondition">Weather Condition: </label>
+        <select id="weatherCondition">
+            <option value="clear">Clear</option>
+            <option value="clouds">Cloudy</option>
+            <option value="rain">Rain</option>
+            <option value="snow">Snow</option>
+        </select><br>
+        <button onclick="fetchWeatherData()">Search</button>
+    </div>
+
+    <div id="map"></div>
+    <div id="destinationList"></div>
+
+    <script>
+        const weatherApiKey = "2e697bc0e1fbb9cb18ddab3adf0c9812"; // OpenWeatherMap API Key
+        const geocodeApiKey = "5e89bec10b854384b6f4181382a0fd1c"; // OpenCageData API Key
+        const mapboxApiKey = "YOUR_MAPBOX_API_KEY"; // Add your Mapbox API Key here
+
+        const cities = [
+            "Delhi", "Agra", "Jaipur", "Varanasi", "Amritsar", "Shimla", "Manali", "Bengaluru",
+            "Chennai", "Hyderabad", "Mysuru", "Kochi", "Thiruvananthapuram", "Ooty", "Kolkata",
+            "Bhubaneswar", "Puri", "Darjeeling", "Gangtok", "Mumbai", "Pune", "Goa", "Udaipur",
+            "Ahmedabad", "Bhopal", "Khajuraho", "Gwalior", "Indore", "Shillong", "Guwahati", 
+            "Tawang", "Imphal"
+        ];
+
+        const map = L.map('map').setView([20.5937, 78.9629], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Fetch with Cache
+        const fetchWithCache = async (url) => {
+            const cacheKey = `cache_${url}`;
+            const cachedResponse = sessionStorage.getItem(cacheKey);
+
+            if (cachedResponse) {
+                return JSON.parse(cachedResponse);
+            }
+
+            const response = await fetch(url);
+            const data = await response.json();
+            sessionStorage.setItem(cacheKey, JSON.stringify(data));
+            setTimeout(() => sessionStorage.removeItem(cacheKey), 5 * 60 * 1000); // Cache for 5 minutes
+
+            return data;
+        };
+
+        // Get Coordinates (with Fallback)
+        const getCoordinates = async (cityName) => {
+            const url = `https://api.opencagedata.com/geocode/v1/json?q=${cityName}&key=${geocodeApiKey}`;
+            try {
+                const data = await fetchWithCache(url);
+                if (data.results && data.results.length > 0) {
+                    const { lat, lng } = data.results[0].geometry;
+                    return { lat, lng };
+                }
+
+                // Fallback to Mapbox API
+                const mapboxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${cityName}.json?access_token=${mapboxApiKey}`;
+                const mapboxData = await fetchWithCache(mapboxUrl);
+                const { center } = mapboxData.features[0];
+                return { lat: center[1], lng: center[0] };
+            } catch (error) {
+                console.error("Error fetching coordinates:", error);
+            }
+            return null;
+        };
+
+        const fetchWeatherData = async () => {
+            const minTemp = parseInt(document.getElementById("minTemp").value);
+            const maxTemp = parseInt(document.getElementById("maxTemp").value);
+            const weatherCondition = document.getElementById("weatherCondition").value;
+
+            map.eachLayer((layer) => {
+                if (layer instanceof L.Marker) map.removeLayer(layer);
+            });
+
+            document.getElementById("destinationList").innerHTML = "";
+
+            for (const cityName of cities) {
+                try {
+                    const coordinates = await getCoordinates(cityName);
+                    if (!coordinates) continue;
+
+                    const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${coordinates.lat}&lon=${coordinates.lng}&appid=${weatherApiKey}&units=metric`;
+                    const weatherData = await fetchWithCache(weatherUrl);
+
+                    const { temp } = weatherData.main;
+                    const cityWeather = weatherData.weather[0].main.toLowerCase();
+
+                    if (temp >= minTemp && temp <= maxTemp && cityWeather.includes(weatherCondition)) {
+                        L.marker([coordinates.lat, coordinates.lng]).addTo(map)
+                            .bindPopup(`<b>${cityName}</b><br>Weather: ${cityWeather}<br>Temp: ${temp}°C`);
+
+                        document.getElementById("destinationList").innerHTML += `
+                            <h3>${cityName}</h3>
+                            <p>Weather: ${cityWeather}</p>
+                            <p>Temperature: ${temp}°C</p>
+                        `;
+                    }
+                } catch (error) {
+                    console.error(`Error fetching weather for ${cityName}:`, error);
+                }
+            }
+
+            if (!document.getElementById("destinationList").innerHTML) {
+                document.getElementById("destinationList").innerHTML = "No matching cities found.";
+            }
+        };
+    </script>
+</body>
+</html>

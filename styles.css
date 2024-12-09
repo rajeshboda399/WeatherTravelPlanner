@@ -1,0 +1,216 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-color: #f0f0f0;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    padding: 20px;
+    background: #4caf50;
+    color: white;
+}
+
+main {
+    padding: 20px;
+}
+
+#results {
+    margin-top: 20px;
+}
+
+button {
+    padding: 10px 20px;
+    background: #4caf50;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #388e3c;
+}
+
+input, select {
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+li {
+    margin: 10px 0;
+}
+/* <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Travel Planner</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        #weatherForm {
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+        }
+        input, select {
+            margin: 5px 0;
+            padding: 5px;
+            width: 200px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+        }
+        #destinationList {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div id="weatherForm">
+        <h1>Weather Travel Planner</h1>
+        <label for="minTemp">Minimum Temperature (°C): </label>
+        <input type="number" id="minTemp" value="20"><br>
+        <label for="maxTemp">Maximum Temperature (°C): </label>
+        <input type="number" id="maxTemp" value="30"><br>
+        <label for="weatherCondition">Weather Condition: </label>
+        <select id="weatherCondition">
+            <option value="clear">Clear</option>
+            <option value="clouds">Cloudy</option>
+            <option value="rain">Rain</option>
+            <option value="snow">Snow</option>
+        </select><br>
+        <button onclick="fetchWeatherData()">Search</button>
+    </div>
+
+    <div id="map"></div>
+    <div id="destinationList"></div>
+
+    <script>
+        const apiKey = "2e697bc0e1fbb9cb18ddab3adf0c9812"; // Your OpenWeatherMap API Key
+
+        // Initialize the map (set default view to Tiruchirappalli)
+        const map = L.map('map').setView([10.7900, 78.7040], 5); // Adjust zoom for a broader map view
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // List of cities to check
+        const cities = [
+            "Delhi", "Agra", "Jaipur", "Varanasi", "Amritsar", "Shimla", "Manali", "Bengaluru",
+            "Chennai", "Hyderabad", "Mysuru", "Kochi", "Thiruvananthapuram", "Ooty", "Kolkata",
+            "Bhubaneswar", "Puri", "Darjeeling", "Gangtok", "Mumbai", "Pune", "Goa", "Udaipur",
+            "Ahmedabad", "Bhopal", "Khajuraho", "Gwalior", "Indore", "Shillong", "Guwahati", 
+            "Tawang", "Imphal"
+        ];
+
+        // Function to fetch and filter weather data based on user input
+        async function fetchAndFilterCities(cityName, minTemp, maxTemp, weatherCondition) {
+            const endpoint = `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${apiKey}&units=metric`;
+
+            try {
+                const response = await fetch(endpoint);
+                const data = await response.json();
+
+                // Extract temperature and weather condition
+                const cityTemp = data.main.temp;
+                const cityWeather = data.weather[0].main.toLowerCase();
+
+                // Filter by temperature and weather condition
+                if (cityTemp >= minTemp && cityTemp <= maxTemp && cityWeather.includes(weatherCondition)) {
+                    return {
+                        name: cityName,
+                        weather: cityWeather,
+                        temperature: cityTemp,
+                        lat: data.coord.lat,
+                        lon: data.coord.lon
+                    };
+                }
+                return null; // No match
+            } catch (error) {
+                console.error("Error fetching and filtering cities:", error);
+            }
+        }
+
+        // Function to add city to the map with a marker
+        function addCityToMap(lat, lon, cityName, weather, temperature) {
+            L.marker([lat, lon]).addTo(map)
+                .bindPopup(`<b>${cityName}</b><br>Weather: ${weather}<br>Temp: ${temperature}°C`)
+                .openPopup();
+        }
+
+        // Function to fetch weather for all cities based on user input
+        async function fetchWeatherData() {
+            // Get values from the user input form
+            const minTemp = parseInt(document.getElementById("minTemp").value);
+            const maxTemp = parseInt(document.getElementById("maxTemp").value);
+            const weatherCondition = document.getElementById("weatherCondition").value;
+
+            // Clear previous map markers and results
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+            document.getElementById("destinationList").innerHTML = "";
+
+            let results = [];
+
+            // Fetch and filter weather data for all cities
+            for (let cityName of cities) {
+                const city = await fetchAndFilterCities(cityName, minTemp, maxTemp, weatherCondition);
+
+                if (city) {
+                    results.push(city);
+
+                    // Display city details
+                    const listContainer = document.getElementById("destinationList");
+                    listContainer.innerHTML += `<h3>Matching City: ${city.name}</h3>
+                                                <p>Weather: ${city.weather}</p>
+                                                <p>Temperature: ${city.temperature}°C</p>`;
+                    
+                    // Add marker to the map for the matching city
+                    addCityToMap(city.lat, city.lon, city.name, city.weather, city.temperature);
+                }
+            }
+
+            // If no cities match, display a message
+            if (results.length === 0) {
+                document.getElementById("destinationList").innerHTML = "No matching cities found.";
+            }
+        }
+    </script>
+</body>
+</html>
+ */
